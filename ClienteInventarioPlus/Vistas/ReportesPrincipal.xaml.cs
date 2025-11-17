@@ -22,15 +22,18 @@ namespace ClienteInventarioPlus.Vistas {
     public partial class ReportesPrincipal : UserControl {
         private IProductoService _proxyProducto;
         private IMovimientoService _proxyMovimiento;
+        private IReservaService _proxyReserva;
         private Frame _mainFrame;
         private ObservableCollection<ProductoDTO> _productos;
+        private ObservableCollection<ReservaDTO> _reservas;
         private UsuarioDTO usuarioActual;
 
-        public ReportesPrincipal(Frame mainFrame, IProductoService proxyProducto, IMovimientoService proxyMovimiento, UsuarioDTO usuarioSesion) {
+        public ReportesPrincipal(Frame mainFrame, IProductoService proxyProducto, IMovimientoService proxyMovimiento, IReservaService proxyReserva, UsuarioDTO usuarioSesion) {
             InitializeComponent();
             _mainFrame = mainFrame;
             _proxyProducto = proxyProducto;
             _proxyMovimiento = proxyMovimiento;
+            _proxyReserva = proxyReserva;
             usuarioActual = usuarioSesion;
         }
 
@@ -353,6 +356,180 @@ namespace ClienteInventarioPlus.Vistas {
                 string carpeta = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReportesGenerados");
                 Directory.CreateDirectory(carpeta);
                 string ruta = Path.Combine(carpeta, "ReporteProductosCriticos.pdf");
+
+                try
+                {
+                    if (File.Exists(ruta))
+                        File.Delete(ruta);
+                }
+                catch (IOException)
+                {
+                    MessageBox.Show("El reporte anterior aún está abierto. Cierre el visor antes de generar uno nuevo.");
+                    return null;
+                }
+
+                using (var exportador = new FastReport.Export.PdfSimple.PDFSimpleExport())
+                {
+                    exportador.Export(reporte, ruta);
+                }
+                
+                return ruta;
+            }
+        }
+
+        private void BtnReporteReservas_Click(object sender, RoutedEventArgs e)
+        {
+            string rutaInventario = GenerarReporteReservas();
+            _mainFrame.Content = new ReportePreviaVista(_mainFrame, rutaInventario,"ReporteReservas");
+        }
+        
+        private string GenerarReporteReservas()
+        {
+            // Crear DataTable con los datos del servicio
+            DataTable reservas = new DataTable("Reservas");
+            reservas.Columns.Add("ID", typeof(int));
+            reservas.Columns.Add("NumeroReserva", typeof(string));
+            reservas.Columns.Add("ProductoID", typeof(int));
+            reservas.Columns.Add("CantidadReservada", typeof(int));
+            reservas.Columns.Add("FechaHora",  typeof(DateTime));
+            reservas.Columns.Add("Cliente", typeof(string));
+
+
+            try
+            {
+                _reservas = new ObservableCollection<ReservaDTO>(_proxyReserva.ObtenerReservas());
+            }
+            catch (EntryPointNotFoundException)
+            {
+                MessageBox.Show("Error al conectar con la base de datos. Intente nuevamente");
+                return null;
+            }
+
+            foreach (ReservaDTO reserva in _reservas)
+            {
+                reservas.Rows.Add(
+                    reserva.ReservaID,
+                    reserva.NumeroReserva,
+                    reserva.ProductoID,
+                    reserva.CantidadReservada,
+                    reserva.FechaHora,
+                    reserva.Cliente
+                );
+            }
+
+            // Crear el reporte
+            using (Report reporte = new Report())
+            {
+                reporte.RegisterData(reservas, "Reservas");
+                (reporte.GetDataSource("Reservas") as FastReport.Data.DataSourceBase).Enabled = true;
+
+                // Crear página
+                ReportPage pagina = new ReportPage();
+                reporte.Pages.Add(pagina);
+
+                // --- Título ---
+                ReportTitleBand titulo = new ReportTitleBand();
+                titulo.Height = Units.Centimeters * 5f; // más alto para no interferir
+                pagina.ReportTitle = titulo;
+
+                TextObject txtTitulo = new TextObject();
+                txtTitulo.Bounds = new System.Drawing.RectangleF(0, 0, Units.Centimeters * 19, Units.Centimeters * 1);
+                txtTitulo.Text = "REPORTE DE RESERVAS";
+                txtTitulo.HorzAlign = HorzAlign.Center;
+                txtTitulo.Font = new System.Drawing.Font("Arial", 16, System.Drawing.FontStyle.Bold);
+                titulo.Objects.Add(txtTitulo);
+
+                float yBase = Units.Centimeters * 1.4f;
+
+                titulo.Objects.AddRange(new[]
+                {
+                    new TextObject()
+                    {
+                        Bounds = new System.Drawing.RectangleF(0, yBase, Units.Centimeters * 10, Units.Centimeters * 0.6f),
+                        Text = "Empresa: Tienda Inventario Plus",
+                        Font = new System.Drawing.Font("Arial", 10)
+                    },
+                    new TextObject()
+                    {
+                        Bounds = new System.Drawing.RectangleF(0, yBase + Units.Centimeters * 0.6f, Units.Centimeters * 10, Units.Centimeters * 0.6f),
+                        Text = "Sucursal: Veracruz Centro",
+                        Font = new System.Drawing.Font("Arial", 10)
+                    },
+                    new TextObject()
+                    {
+                        Bounds = new System.Drawing.RectangleF(11 * Units.Centimeters, yBase, Units.Centimeters * 8, Units.Centimeters * 0.6f),
+                        Text = $"Fecha de generación: {DateTime.Now:dd/MM/yyyy HH:mm}",
+                        Font = new System.Drawing.Font("Arial", 10),
+                        HorzAlign = HorzAlign.Right
+                    },
+                    new TextObject()
+                    {
+                        Bounds = new System.Drawing.RectangleF(11 * Units.Centimeters, yBase + Units.Centimeters * 0.6f, Units.Centimeters * 8, Units.Centimeters * 0.6f),
+                        Text = $"Generado por: {usuarioActual.Nombre}",
+                        Font = new System.Drawing.Font("Arial", 10),
+                        HorzAlign = HorzAlign.Right
+                    }
+                });
+
+                // --- Encabezados dentro del ReportTitleBand ---
+                string[] headers = { "ID", "Numero de reserva", "Producto (ID)", "Cantidad Reservada", "FechaHora", "Cliente"};
+                float[] posiciones = { 0, 2, 7, 9, 11, 16, 17.5f };
+                float alturaEncabezado = Units.Centimeters * 0.6f;
+                float yEncabezado = yBase + Units.Centimeters * 3.0f; // justo debajo de los datos de empresa/usuario
+
+                for (int i = 0; i < headers.Length; i++)
+                {
+                    TextObject txtHeader = new TextObject();
+                    txtHeader.Bounds = new System.Drawing.RectangleF(
+                        posiciones[i] * Units.Centimeters,
+                        yEncabezado,
+                        (i < headers.Length - 1 ? (posiciones[i + 1] - posiciones[i]) : 2) * Units.Centimeters,
+                        alturaEncabezado
+                    );
+                    txtHeader.Text = headers[i];
+                    txtHeader.Font = new System.Drawing.Font("Arial", 9, System.Drawing.FontStyle.Bold);
+                    txtHeader.HorzAlign = HorzAlign.Center;
+                    txtHeader.VertAlign = VertAlign.Center;
+                    txtHeader.Border = new Border() { Lines = BorderLines.All, Color = System.Drawing.Color.Black };
+                    titulo.Objects.Add(txtHeader);
+                }
+
+
+
+                // --- Datos (DataBand) ---
+                DataBand datos = new DataBand();
+                datos.Parent = pagina; // importante
+                datos.DataSource = reporte.GetDataSource("Reservas");
+                datos.CanGrow = true;
+                datos.CanShrink = true;
+                datos.Height = Units.Centimeters * 1.0f;
+                pagina.Bands.Add(datos);
+
+                string[] campos = { "ID", "NumeroReserva", "ProductoID", "CantidadReservada", "FechaHora", "Cliente"};
+
+                for (int i = 0; i < campos.Length; i++)
+                {
+                    datos.Objects.Add(new TextObject()
+                    {
+                        Bounds = new System.Drawing.RectangleF(
+                            posiciones[i] * Units.Centimeters,
+                            0,
+                            (i < campos.Length - 1 ? (posiciones[i + 1] - posiciones[i]) : 2) * Units.Centimeters,
+                            Units.Centimeters * 1.0f),
+                        Text = $"[Reservas.{campos[i]}]",
+                        Border = new Border() { Lines = BorderLines.All },
+                        HorzAlign = HorzAlign.Center,
+                        VertAlign = VertAlign.Center
+                    });
+                }
+
+
+                // --- Exportar a PDF ---
+                reporte.Prepare();
+
+                string carpeta = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReportesGenerados");
+                Directory.CreateDirectory(carpeta);
+                string ruta = Path.Combine(carpeta, "ReporteReservas.pdf");
 
                 try
                 {

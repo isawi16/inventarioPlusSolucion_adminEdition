@@ -16,7 +16,7 @@
         <!-- Fila 1: Registrar Entrada / Registrar Salida -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
             
-            <!-- Botón Registrar Entrada -->
+            <!-- Botón Reporte inventario -->
             <Button Width="500" Height="250" Background="#FFF0F0F0" Foreground="Black" Margin="0,0,40,0"
                     Click="BtnReporteInventario_Click">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -25,7 +25,7 @@
                 </StackPanel>
             </Button>
 
-            <!-- Botón Registrar Salida -->
+            <!-- Botón Reporte movimientos -->
             <Button Width="500" Height="250" Background="#FFF0F0F0" Foreground="Black"
                     Click="BtnReporteMovimientos_Click">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -37,14 +37,24 @@
         </StackPanel>
 
         <!-- Fila 2: Historial -->
-        <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,20,0,0">
-            <Button Width="500" Height="250" Background="#FFF0F0F0" Foreground="Black"
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" >
+            <Button Width="500" Height="250" Background="#FFF0F0F0" Foreground="Black" Margin="0,0,40,0"
                     Click="BtnListaProductosCriticos_Click">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     
                     <TextBlock Text="Generar lista de productos críticos" VerticalAlignment="Center" FontSize="26" FontWeight="Bold"/>
                 </StackPanel>
             </Button>
+            
+            <!-- Botón Reporte movimientos -->
+            <Button Width="500" Height="250" Background="#FFF0F0F0" Foreground="Black"
+                    Click="BtnReporteReservas_Click">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    
+                    <TextBlock Text="Generar reporte de reservas" VerticalAlignment="Center" FontSize="26" FontWeight="Bold"/>
+                </StackPanel>
+            </Button>
+            
         </StackPanel>
     </Grid>
 </UserControl>

@@ -43,6 +43,9 @@ namespace ClienteInventarioPlus.Vistas
                 var factoryMovimiento = new ChannelFactory<IMovimientoService>("MovimientoServiceEndpoint");
                 proxyMovimiento = factoryMovimiento.CreateChannel();
                 
+                var factoryReserva = new ChannelFactory<IReservaService>("ReservaServiceEndpoint");
+                proxyReserva = factoryReserva.CreateChannel();
+                
             }
             catch (Exception ex)
             {
@@ -76,7 +79,7 @@ namespace ClienteInventarioPlus.Vistas
         private void BtnReportes_Click(object sender, RoutedEventArgs e)
         {
             CambiarSeleccion(BtnReportes);
-            MainFrame.Content = new ReportesPrincipal(MainFrame, proxyProducto, proxyMovimiento, usuarioSesion);
+            MainFrame.Content = new ReportesPrincipal(MainFrame, proxyProducto, proxyMovimiento, proxyReserva, usuarioSesion);
         }
 
         private void BtnProveedores_Click(object sender, RoutedEventArgs e)
